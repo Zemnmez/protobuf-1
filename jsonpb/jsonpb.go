@@ -126,21 +126,18 @@ type JSONPBUnmarshaler interface {
 }
 
 // Marshal marshals a protocol buffer into JSON.
-func (m *Marshaler) Marshal(out io.Writer, pb proto.Message) error {
+func (m *Marshaler) Marshal(out io.Writer, pb interface{}) error {
 	v := reflect.ValueOf(pb)
 	if pb == nil || (v.Kind() == reflect.Ptr && v.IsNil()) {
 		return errors.New("Marshal called with nil")
 	}
-	// Check for unset required fields first.
-	if err := checkRequiredFields(pb); err != nil {
-		return err
-	}
+
 	writer := &errWriter{writer: out}
 	return m.marshalObject(writer, pb, "", "")
 }
 
 // MarshalToString converts a protocol buffer object to JSON string.
-func (m *Marshaler) MarshalToString(pb proto.Message) (string, error) {
+func (m *Marshaler) MarshalToString(pb interface{}) (string, error) {
 	var buf bytes.Buffer
 	if err := m.Marshal(&buf, pb); err != nil {
 		return "", err
@@ -170,8 +167,16 @@ var (
 	messageType = reflect.TypeOf((*proto.Message)(nil)).Elem()
 )
 
+func (m *Marshaler) marshalMessage(out io.Writer, msg proto.Message) error {
+	panic("todo")
+	// Check for unset required fields first.
+	if err := checkRequiredFields(msg); err != nil {
+		return err
+	}
+}
+
 // marshalObject writes a struct to the Writer.
-func (m *Marshaler) marshalObject(out *errWriter, v proto.Message, indent, typeURL string) error {
+func (m *Marshaler) marshalObject(out *errWriter, v interface{}, indent, typeURL string) error {
 	if jsm, ok := v.(JSONPBMarshaler); ok {
 		b, err := jsm.MarshalJSONPB(m)
 		if err != nil {
@@ -680,7 +685,7 @@ type Unmarshaler struct {
 // UnmarshalNext unmarshals the next protocol buffer from a JSON object stream.
 // This function is lenient and will decode any options permutations of the
 // related Marshaler.
-func (u *Unmarshaler) UnmarshalNext(dec *json.Decoder, pb proto.Message) error {
+func (u *Unmarshaler) UnmarshalNext(dec *json.Decoder, pb interface{}) error {
 	inputValue := json.RawMessage{}
 	if err := dec.Decode(&inputValue); err != nil {
 		return err
@@ -694,7 +699,7 @@ func (u *Unmarshaler) UnmarshalNext(dec *json.Decoder, pb proto.Message) error {
 // Unmarshal unmarshals a JSON object stream into a protocol
 // buffer. This function is lenient and will decode any options
 // permutations of the related Marshaler.
-func (u *Unmarshaler) Unmarshal(r io.Reader, pb proto.Message) error {
+func (u *Unmarshaler) Unmarshal(r io.Reader, pb interface{}) error {
 	dec := json.NewDecoder(r)
 	return u.UnmarshalNext(dec, pb)
 }
@@ -702,21 +707,21 @@ func (u *Unmarshaler) Unmarshal(r io.Reader, pb proto.Message) error {
 // UnmarshalNext unmarshals the next protocol buffer from a JSON object stream.
 // This function is lenient and will decode any options permutations of the
 // related Marshaler.
-func UnmarshalNext(dec *json.Decoder, pb proto.Message) error {
+func UnmarshalNext(dec *json.Decoder, pb interface{}) error {
 	return new(Unmarshaler).UnmarshalNext(dec, pb)
 }
 
 // Unmarshal unmarshals a JSON object stream into a protocol
 // buffer. This function is lenient and will decode any options
 // permutations of the related Marshaler.
-func Unmarshal(r io.Reader, pb proto.Message) error {
+func Unmarshal(r io.Reader, pb interface{}) error {
 	return new(Unmarshaler).Unmarshal(r, pb)
 }
 
 // UnmarshalString will populate the fields of a protocol buffer based
 // on a JSON string. This function is lenient and will decode any options
 // permutations of the related Marshaler.
-func UnmarshalString(str string, pb proto.Message) error {
+func UnmarshalString(str string, pb interface{}) error {
 	return new(Unmarshaler).Unmarshal(strings.NewReader(str), pb)
 }
 
